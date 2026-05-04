@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useEffect, useRef, useState } from 'react'
 import { GraphNode, GraphEdge } from '@/types'
 import { 
   calculateLayout, 
@@ -15,18 +15,19 @@ import ScholarCard from './ScholarCard'
 interface TimelineCanvasProps {
   nodes: GraphNode[]
   edges: GraphEdge[]
-  onNodeClick?: (nodeId: string) => void
+  onNodeClick?: (nodeId: string, x: number, y: number) => void
   scrollY?: number
   pixelsPerYear?: number
   startYear?: number
   viewportHeight?: number
+  selectedNodeId?: string | null
 }
 
 const DEFAULT_CONFIG = {
   startYear: 570,
   pixelsPerYear: 4,
-  laneWidth: 280,
-  laneGap: 40,
+  laneWidth: 320,
+  laneGap: 60,
   minCardHeight: 80,
   minSpacing: 5,
 }
@@ -38,8 +39,24 @@ export default function TimelineCanvas({
   scrollY = 0,
   pixelsPerYear = 4,
   startYear = 570,
-  viewportHeight = 600
+  viewportHeight = 600,
+  selectedNodeId = null
 }: TimelineCanvasProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [containerWidth, setContainerWidth] = useState(800)
+
+  // Measure container width
+  useEffect(() => {
+    const updateWidth = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.clientWidth)
+      }
+    }
+    updateWidth()
+    window.addEventListener('resize', updateWidth)
+    return () => window.removeEventListener('resize', updateWidth)
+  }, [])
+
   const config: LayoutConfig = useMemo(() => ({
     ...DEFAULT_CONFIG,
     pixelsPerYear,
@@ -71,39 +88,55 @@ export default function TimelineCanvas({
   )
 
   const handleCardClick = useCallback((nodeId: string) => {
-    onNodeClick?.(nodeId)
-  }, [onNodeClick])
+    const assignment = assignmentMap.get(nodeId)
+    if (assignment && containerRef.current) {
+      const cardX = assignment.lane * (layoutConfig.laneWidth + layoutConfig.laneGap) + 64 // 64 = khilafah width
+      const cardY = assignment.y
+      onNodeClick?.(nodeId, cardX, cardY)
+    }
+  }, [assignmentMap, layoutConfig, onNodeClick])
 
   // Calculate total dimensions
   const totalHeight = useMemo(() => {
-    if (assignments.length === 0) return 0
+    if (assignments.length === 0) return viewportHeight + 500
     const maxY = Math.max(...assignments.map(a => a.y + a.height))
-    return maxY + 500 // buffer
-  }, [assignments])
+    return maxY + 500
+  }, [assignments, viewportHeight])
 
   const totalWidth = useMemo(() => {
     const maxLane = Math.max(...assignments.map(a => a.lane), 0)
     return (maxLane + 1) * (layoutConfig.laneWidth + layoutConfig.laneGap) + 100
   }, [assignments, layoutConfig])
 
+  // Calculate offset to center content
+  const contentWidth = Math.max(containerWidth - 60, totalWidth)
+  const xOffset = 0
+
   return (
     <div 
-      className="w-full h-full overflow-hidden"
-      style={{ backgroundColor: 'var(--background)' }}
+      ref={containerRef}
+      className="w-full h-full overflow-hidden relative"
+      style={{ 
+        backgroundColor: 'var(--background)',
+      }}
     >
-      {/* SVG canvas with transform for scrolling */}
+      {/* Main SVG canvas */}
       <svg
         width="100%"
-        height="100%"
-        viewBox={`0 0 ${totalWidth} ${viewportHeight}`}
+        height={totalHeight}
+        viewBox={`0 0 ${Math.max(containerWidth - 60, contentWidth)} ${totalHeight}`}
         style={{
-          transform: `translateY(${-scrollY}px)`,
-          transition: 'transform 0.1s ease-out',
+          transition: 'transform 0.3s ease-out',
         }}
       >
-        {/* Background grid lines */}
+        {/* Grid background */}
         <defs>
-          <pattern id="grid" width="100" height={pixelsPerYear * 10} patternUnits="userSpaceOnUse">
+          <pattern 
+            id="timeline-grid" 
+            width="100" 
+            height={pixelsPerYear * 10} 
+            patternUnits="userSpaceOnUse"
+          >
             <line 
               x1="0" 
               y1={pixelsPerYear * 10 - 1} 
@@ -115,27 +148,50 @@ export default function TimelineCanvas({
             />
           </pattern>
         </defs>
-        <rect width="100%" height={totalHeight} fill="url(#grid)" />
+        <rect 
+          width="100%" 
+          height={totalHeight} 
+          fill="url(#timeline-grid)" 
+        />
 
-        {/* Connection lines (behind cards) */}
-        {connectionLines.map((line: ConnectionLine) => (
-          <path
-            key={line.id}
-            d={line.path}
-            fill="none"
-            stroke="var(--text-secondary)"
-            strokeWidth="1.5"
-            opacity="0.4"
-            strokeDasharray="4,2"
-          />
-        ))}
+        {/* Connection lines */}
+        {connectionLines.map((line: ConnectionLine) => {
+          const sourceAssignment = assignmentMap.get(line.sourceId)
+          const targetAssignment = assignmentMap.get(line.targetId)
+          if (!sourceAssignment || !targetAssignment) return null
+
+          const sourceX = xOffset + sourceAssignment.lane * (layoutConfig.laneWidth + layoutConfig.laneGap) + layoutConfig.laneWidth
+          const sourceY = sourceAssignment.y + sourceAssignment.height
+          const targetX = xOffset + targetAssignment.lane * (layoutConfig.laneWidth + layoutConfig.laneGap) + layoutConfig.laneWidth / 2
+          const targetY = targetAssignment.y
+
+          const isHighlighted = selectedNodeId === line.sourceId || selectedNodeId === line.targetId
+          const midY = (sourceY + targetY) / 2
+
+          return (
+            <path
+              key={line.id}
+              d={`M ${sourceX} ${sourceY} 
+                  C ${sourceX} ${midY}, ${targetX} ${midY}, ${targetX} ${targetY}`}
+              fill="none"
+              stroke={isHighlighted ? 'var(--accent)' : 'var(--text-secondary)'}
+              strokeWidth={isHighlighted ? 2 : 1}
+              opacity={isHighlighted ? 1 : 0.3}
+              strokeDasharray={isHighlighted ? 'none' : '4,2'}
+              style={{
+                transition: 'stroke 0.2s ease, opacity 0.2s ease',
+              }}
+            />
+          )
+        })}
 
         {/* Scholar cards */}
         {visibleAssignments.map((assignment: LaneAssignment) => {
           const node = nodes.find(n => n.id === assignment.id)
           if (!node) return null
           
-          const x = assignment.lane * (layoutConfig.laneWidth + layoutConfig.laneGap)
+          const x = xOffset + assignment.lane * (layoutConfig.laneWidth + layoutConfig.laneGap)
+          const isSelected = selectedNodeId === assignment.id
           
           return (
             <ScholarCard
@@ -146,21 +202,12 @@ export default function TimelineCanvas({
               height={assignment.height}
               data={node}
               onClick={() => handleCardClick(node.id)}
+              isSelected={isSelected}
+              pixelsPerYear={pixelsPerYear}
             />
           )
         })}
       </svg>
-
-      {/* Scroll container for interaction */}
-      <div 
-        className="absolute inset-0 overflow-y-scroll"
-        style={{ 
-          msOverflowStyle: 'none',
-          scrollbarWidth: 'none',
-        }}
-      >
-        <div style={{ height: totalHeight }} />
-      </div>
     </div>
   )
 }

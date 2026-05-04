@@ -1,13 +1,22 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import Navbar from '@/components/ui/Navbar'
 import ScholarPopup from '@/components/ui/ScholarPopup'
-import TimelineCanvas from '@/components/graph/TimelineCanvas'
+import TimelineRuler from '@/components/ui/TimelineRuler'
 import { GraphNode, GraphEdge, Scholar, Generation, Madhhab } from '@/types'
 
-const START_YEAR = 570
-const BASE_PIXELS_PER_YEAR = 4
+const BASE_PIXELS_PER_YEAR = 3
+
+const TimelineCanvas = dynamic(() => import('@/components/graph/TimelineCanvas'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full">
+      <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loading timeline...</span>
+    </div>
+  ),
+})
 
 export default function Home() {
   const [nodes, setNodes] = useState<GraphNode[]>([])
@@ -18,7 +27,9 @@ export default function Home() {
   const [zoom, setZoom] = useState(1)
   const [showPopup, setShowPopup] = useState(false)
   const [viewportHeight, setViewportHeight] = useState(600)
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  
   const [filters, setFilters] = useState({
     generation: null as Generation | null,
     madhhab: null as Madhhab | null,
@@ -26,11 +37,28 @@ export default function Home() {
     maxYear: null as number | null,
   })
 
+  // Calculate dynamic timeline range based on data
+  const timelineRange = useMemo(() => {
+    if (nodes.length === 0) return { startYear: 570, endYear: 2030 }
+    
+    const years = nodes
+      .flatMap(n => [n.data.birthYear, n.data.deathYear].filter(Boolean) as number[])
+      .filter(y => y > 0)
+    
+    if (years.length === 0) return { startYear: 570, endYear: 2030 }
+    
+    const minYear = Math.min(...years) - 10
+    const maxYear = Math.max(...years, 2030) + 10
+    
+    return { startYear: Math.max(570, minYear), endYear: maxYear }
+  }, [nodes])
+
   // Get viewport height
   useEffect(() => {
     const updateHeight = () => {
-      if (containerRef.current) {
-        setViewportHeight(containerRef.current.clientHeight)
+      const mainEl = document.querySelector('main')
+      if (mainEl) {
+        setViewportHeight(mainEl.clientHeight)
       }
     }
     updateHeight()
@@ -42,16 +70,16 @@ export default function Home() {
   const pixelsPerYear = BASE_PIXELS_PER_YEAR * zoom
 
   // Calculate visible year range
-  const visibleStartYear = START_YEAR + Math.floor(scrollY / pixelsPerYear)
+  const visibleStartYear = timelineRange.startYear + Math.floor(scrollY / pixelsPerYear)
   const visibleEndYear = visibleStartYear + Math.floor(viewportHeight / pixelsPerYear)
 
-  // Fetch with debounce for smooth scroll
+  // Fetch with debounce
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchGraphData()
-    }, 150)
+    }, 200)
     return () => clearTimeout(timer)
-  }, [scrollY, filters])
+  }, [scrollY, filters, timelineRange])
 
   const fetchGraphData = useCallback(async () => {
     setLoading(true)
@@ -60,9 +88,9 @@ export default function Home() {
       if (filters.generation) params.set('generation', filters.generation)
       if (filters.madhhab) params.set('madhhab', filters.madhhab)
       
-      // Filter by visible year range
-      params.set('minYear', (visibleStartYear - 50).toString())
-      params.set('maxYear', (visibleEndYear + 50).toString())
+      // Filter by expanded range around viewport
+      params.set('minYear', (timelineRange.startYear - 20).toString())
+      params.set('maxYear', (timelineRange.endYear + 20).toString())
 
       const res = await fetch(`/api/graph?${params.toString()}`)
       const data = await res.json()
@@ -73,7 +101,7 @@ export default function Home() {
     } finally {
       setLoading(false)
     }
-  }, [filters, visibleStartYear, visibleEndYear])
+  }, [filters, timelineRange])
 
   const fetchScholar = useCallback(async (id: string) => {
     try {
@@ -88,54 +116,58 @@ export default function Home() {
     }
   }, [])
 
-  const handleNodeClick = useCallback((nodeId: string) => {
+  const handleNodeClick = useCallback((nodeId: string, cardX: number, cardY: number) => {
+    setSelectedNodeId(nodeId)
     fetchScholar(nodeId)
-  }, [fetchScholar])
+    
+    // Calculate scroll position to center the selected card
+    const targetScrollY = cardY - viewportHeight / 2
+    const maxScroll = (timelineRange.endYear - timelineRange.startYear) * pixelsPerYear - viewportHeight
+    setScrollY(Math.max(0, Math.min(targetScrollY, maxScroll)))
+  }, [fetchScholar, viewportHeight, pixelsPerYear, timelineRange])
 
   const handleFilterChange = useCallback((newFilters: typeof filters) => {
     setFilters(newFilters)
+  }, [])
+
+  const handleZoomChange = useCallback((newZoom: number) => {
+    // Maintain focus point during zoom
+    const currentYearAtCenter = timelineRange.startYear + (scrollY + viewportHeight / 2) / pixelsPerYear
+    setZoom(newZoom)
+    
+    // Recalculate scroll to keep same year at center
+    const newPixelsPerYear = BASE_PIXELS_PER_YEAR * newZoom
+    const newScrollY = (currentYearAtCenter - timelineRange.startYear) * newPixelsPerYear - viewportHeight / 2
+    setScrollY(Math.max(0, newScrollY))
+  }, [scrollY, pixelsPerYear, viewportHeight, timelineRange])
+
+  const closePopup = useCallback(() => {
+    setShowPopup(false)
+    setSelectedScholar(null)
+    setSelectedNodeId(null)
   }, [])
 
   const handleTimelineScroll = useCallback((newScrollY: number) => {
     setScrollY(newScrollY)
   }, [])
 
-  const handleZoomChange = useCallback((newZoom: number) => {
-    // Adjust scroll to maintain same year in view
-    const currentYear = START_YEAR + Math.floor(scrollY / (BASE_PIXELS_PER_YEAR * newZoom))
-    setZoom(newZoom)
-    setScrollY((currentYear - START_YEAR) * BASE_PIXELS_PER_YEAR * newZoom)
-  }, [scrollY])
-
-  const closePopup = useCallback(() => {
-    setShowPopup(false)
-    setSelectedScholar(null)
-  }, [])
-
-  // Handle timeline scroll via mouse/drag
-  const handleTimelineDrag = useCallback((deltaY: number) => {
-    const maxScroll = (2030 - START_YEAR) * BASE_PIXELS_PER_YEAR * zoom
-    setScrollY(s => Math.max(0, Math.min(s + deltaY, maxScroll)))
-  }, [zoom])
-
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       <Navbar 
         onSearch={(query) => console.log('Search:', query)}
-        searchPlaceholder="Search..."
+        searchPlaceholder="Search scholars..."
         filters={filters}
         onFilterChange={handleFilterChange}
+        zoom={zoom}
+        onZoomChange={handleZoomChange}
       />
       
       <div className="flex-1 flex overflow-hidden relative" ref={containerRef}>
         {/* Main timeline canvas */}
-        <main 
-          className="flex-1 relative" 
-          style={{ backgroundColor: 'var(--background)' }}
-        >
+        <main className="flex-1 relative overflow-hidden" style={{ backgroundColor: 'var(--background)' }}>
           {loading && nodes.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-xs" style={{ color: 'var(--text-secondary)' }}>
-              Loading...
+            <div className="flex items-center justify-center h-full">
+              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loading...</span>
             </div>
           ) : (
             <TimelineCanvas
@@ -144,126 +176,31 @@ export default function Home() {
               onNodeClick={handleNodeClick}
               scrollY={scrollY}
               pixelsPerYear={pixelsPerYear}
-              startYear={START_YEAR}
+              startYear={timelineRange.startYear}
               viewportHeight={viewportHeight}
+              selectedNodeId={selectedNodeId}
             />
           )}
         </main>
         
         {/* Timeline ruler on right */}
-        <div 
-          className="fixed right-0 top-12 bottom-0 w-14 flex flex-col items-center border-l select-none"
-          style={{ 
-            backgroundColor: 'var(--surface)', 
-            borderColor: 'var(--border)',
-            width: 56,
-          }}
-        >
-          {/* Top year */}
-          <div 
-            className="w-full py-1 text-[9px] text-center font-medium border-b"
-            style={{ backgroundColor: 'var(--accent)', color: 'var(--surface)' }}
-          >
-            {visibleStartYear}
-          </div>
-
-          {/* Draggable area */}
-          <div 
-            className="flex-1 w-full overflow-hidden relative cursor-grab"
-            onMouseDown={(e) => {
-              const startY = e.clientY
-              const startScrollY = scrollY
-              const onMove = (moveEvent: MouseEvent) => {
-                const delta = (startY - moveEvent.clientY) * 1.5
-                handleTimelineDrag(delta)
-              }
-              const onUp = () => {
-                window.removeEventListener('mousemove', onMove)
-                window.removeEventListener('mouseup', onUp)
-              }
-              window.addEventListener('mousemove', onMove)
-              window.addEventListener('mouseup', onUp)
-            }}
-            onWheel={(e) => {
-              e.preventDefault()
-              handleTimelineDrag(e.deltaY > 0 ? 80 : -80)
-            }}
-          >
-            {/* Year markers */}
-            {Array.from({ length: 15 }).map((_, i) => {
-              const year = START_YEAR + (i * 100)
-              const y = (year - START_YEAR) * pixelsPerYear - scrollY
-              if (y < -50 || y > viewportHeight + 50) return null
-              return (
-                <div
-                  key={year}
-                  className="absolute w-full flex items-center"
-                  style={{ 
-                    top: y,
-                    borderBottom: '1px solid var(--border)',
-                  }}
-                >
-                  <span className="pl-1 text-[7px] font-medium" style={{ color: 'var(--text-secondary)' }}>
-                    {year}
-                  </span>
-                </div>
-              )
-            })}
-
-            {/* Minor 50-year markers */}
-            {Array.from({ length: 30 }).map((_, i) => {
-              const year = START_YEAR + (i * 50)
-              if (year % 100 === 0) return null
-              const y = (year - START_YEAR) * pixelsPerYear - scrollY
-              if (y < -50 || y > viewportHeight + 50) return null
-              return (
-                <div
-                  key={`m${year}`}
-                  className="absolute w-full"
-                  style={{ 
-                    top: y,
-                    borderBottom: '1px solid var(--border)',
-                    opacity: 0.3,
-                    height: '1px',
-                  }}
-                />
-              )
-            })}
-          </div>
-
-          {/* Bottom year */}
-          <div 
-            className="w-full py-1 text-[9px] text-center border-t"
-            style={{ backgroundColor: 'var(--surface-hover)', color: 'var(--text-secondary)' }}
-          >
-            {visibleEndYear}
-          </div>
-
-          {/* Zoom controls */}
-          <div className="w-full p-2 border-t flex flex-col gap-1" style={{ borderColor: 'var(--border)' }}>
-            <button
-              onClick={() => handleZoomChange(Math.min(3, zoom + 0.25))}
-              className="p-1 rounded text-xs"
-              style={{ backgroundColor: 'var(--surface-hover)', color: 'var(--text-secondary)' }}
-            >
-              +
-            </button>
-            <button
-              onClick={() => handleZoomChange(Math.max(0.5, zoom - 0.25))}
-              className="p-1 rounded text-xs"
-              style={{ backgroundColor: 'var(--surface-hover)', color: 'var(--text-secondary)' }}
-            >
-              −
-            </button>
-            <div className="text-[8px] text-center" style={{ color: 'var(--text-secondary)' }}>
-              {zoom.toFixed(1)}x
-            </div>
-          </div>
-        </div>
+        <TimelineRuler
+          scrollY={scrollY}
+          pixelsPerYear={pixelsPerYear}
+          startYear={timelineRange.startYear}
+          endYear={timelineRange.endYear}
+          viewportHeight={viewportHeight}
+          onScroll={handleTimelineScroll}
+          visibleStartYear={visibleStartYear}
+          visibleEndYear={visibleEndYear}
+        />
         
-        {/* Scholar popup on left */}
+        {/* Scholar popup on left (overlays everything) */}
         {showPopup && selectedScholar && (
-          <ScholarPopup scholar={selectedScholar} onClose={closePopup} />
+          <ScholarPopup 
+            scholar={selectedScholar} 
+            onClose={closePopup}
+          />
         )}
       </div>
     </div>
