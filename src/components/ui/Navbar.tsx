@@ -17,6 +17,7 @@ interface NavbarProps {
   onFilterChange: (filters: NavbarProps['filters']) => void
   zoom: number
   onZoomChange: (zoom: number) => void
+  onToggleFilters?: () => void
 }
 
 export default function Navbar({ 
@@ -25,7 +26,8 @@ export default function Navbar({
   filters, 
   onFilterChange,
   zoom,
-  onZoomChange
+  onZoomChange,
+  onToggleFilters
 }: NavbarProps) {
   const [query, setQuery] = useState('')
 
@@ -91,8 +93,24 @@ export default function Navbar({
           </form>
         )}
 
+        {/* Mobile Filter Toggle */}
+        {onToggleFilters && (
+          <button
+            onClick={onToggleFilters}
+            className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg"
+            style={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+            aria-label="Toggle filters"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-7 7a1 1 0 01-.707.293H3.828a1 1 0 01-.707-.293l-7-7A1 1 0 012.586 4H2V4zM3 4h18v2H3V4z" />
+            </svg>
+          </button>
+        )}
+
         {/* Filter Dropdown */}
-        <FilterMenu filters={filters} onFilterChange={onFilterChange} />
+        <div className="hidden lg:block">
+          <FilterMenu filters={filters} onFilterChange={onFilterChange} />
+        </div>
 
         {/* Zoom Controls */}
         <div className="flex items-center gap-1 h-10 px-2 rounded-lg" style={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)' }}>
