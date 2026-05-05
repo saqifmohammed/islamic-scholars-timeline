@@ -19,7 +19,7 @@ const creeds: (Creed | null)[] = ['athari', 'ashari', 'maturidi', 'zahiri', null
 export default function FilterSidebar({ filters, onFilterChange }: FilterSidebarProps) {
   return (
     <div 
-      className="w-[240px] h-full border-r p-4 overflow-y-auto"
+      className="w-[280px] h-full border-r p-4 overflow-y-auto"
       style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
     >
       <h2 className="text-sm font-medium mb-4" style={{ color: 'var(--text-primary)' }}>

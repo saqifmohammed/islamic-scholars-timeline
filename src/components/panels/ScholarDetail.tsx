@@ -1,20 +1,22 @@
 'use client'
 
-import { Scholar, GENERATION_LABELS } from '@/types'
+import { GraphNode, GENERATION_LABELS } from '@/types'
 
 interface ScholarDetailProps {
-  scholar: Scholar | null
+  scholar: GraphNode | null
+  onClose?: () => void
   onTeacherClick?: (teacherId: string) => void
   onStudentClick?: (studentId: string) => void
 }
 
 export default function ScholarDetail({ 
-  scholar, 
+  scholar,
+  onClose,
 }: ScholarDetailProps) {
   if (!scholar) {
     return (
       <div 
-        className="w-[280px] h-full border-l p-4"
+        className="w-[320px] h-full border-l p-4"
         style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
       >
         <div 
@@ -27,12 +29,29 @@ export default function ScholarDetail({
     )
   }
 
+  const birthYear = scholar.data.birthYear
+  const deathYear = scholar.data.deathYear
+
   return (
     <div 
-      className="w-[280px] h-full border-l p-4 overflow-y-auto"
+      className="w-[320px] h-full border-l p-4 overflow-y-auto"
       style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
     >
-      <div className="space-y-3">
+      {/* Close button */}
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-lg"
+          style={{ 
+            backgroundColor: 'var(--surface-hover)', 
+            color: 'var(--text-secondary)' 
+          }}
+        >
+          ✕
+        </button>
+      )}
+      
+      <div className="space-y-4">
         {/* Generation badge */}
         <div>
           <span 
@@ -42,39 +61,52 @@ export default function ScholarDetail({
               color: 'var(--text-secondary)',
             }}
           >
-            {GENERATION_LABELS[scholar.generation as keyof typeof GENERATION_LABELS]}
+            {GENERATION_LABELS[scholar.data.generation as keyof typeof GENERATION_LABELS]}
           </span>
         </div>
 
         {/* Name */}
-        <h2 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>
-          {scholar.name}
+        <h2 className="text-xl font-medium" style={{ color: 'var(--text-primary)' }}>
+          {scholar.label}
         </h2>
 
         {/* Years */}
-        {(scholar.birth_year || scholar.death_year) && (
+        {(birthYear || deathYear) && (
           <div style={{ color: 'var(--text-secondary)' }}>
-            {scholar.birth_year && <span>{scholar.birth_year}</span>}
-            {scholar.birth_year && scholar.death_year && <span> — </span>}
-            {scholar.death_year && <span>{scholar.death_year}</span>}
+            {birthYear && <span>{birthYear}</span>}
+            {birthYear && deathYear && <span> — </span>}
+            {deathYear && <span>{deathYear}</span>}
             <span className="ml-2">(AH)</span>
           </div>
         )}
 
+        {/* Lifespan */}
+        {birthYear && deathYear && (
+          <span 
+            className="text-xs px-2 py-1 rounded"
+            style={{ 
+              backgroundColor: 'var(--accent)', 
+              color: 'var(--surface)' 
+            }}
+          >
+            {deathYear - birthYear} years
+          </span>
+        )}
+
         {/* Madhhab and Creed */}
-        <div className="flex gap-2">
-          {scholar.madhhab && (
+        <div className="flex gap-2 flex-wrap">
+          {scholar.data.madhhab && (
             <span 
               className="text-xs px-2 py-1 rounded"
               style={{ 
                 backgroundColor: 'var(--surface-hover)',
-                color: 'var(--text-secondary)',
+                color: 'var(--text-primary)',
               }}
             >
-              Madhhab: {scholar.madhhab}
+              {scholar.data.madhhab}
             </span>
           )}
-          {scholar.creed && (
+          {scholar.data.creed && (
             <span 
               className="text-xs px-2 py-1 rounded"
               style={{ 
@@ -82,27 +114,10 @@ export default function ScholarDetail({
                 color: 'var(--surface)',
               }}
             >
-              {scholar.creed}
+              {scholar.data.creed}
             </span>
           )}
         </div>
-
-        {/* Region */}
-        {scholar.region && (
-          <div style={{ color: 'var(--text-secondary)' }}>
-            <span className="text-xs uppercase tracking-wider">Region</span>
-            <div className="text-sm">{scholar.region}</div>
-          </div>
-        )}
-
-        {/* Notes */}
-        {scholar.notes && (
-          <div>
-            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              {scholar.notes}
-            </p>
-          </div>
-        )}
       </div>
     </div>
   )

@@ -60,39 +60,9 @@ function ScholarCard({
   const students = edges.filter(e => e.source === data.id).map(e => e.target)
 
   const nodeMap = new Map(nodes.map(n => [n.id, n.label]))
-
   const getLabel = (id: string) => nodeMap.get(id) || id
-  edges.forEach(e => {
-    nodeMap.set(e.source, e.source)
-    nodeMap.set(e.target, e.target)
-  })
 
   const expandedHeight = isSelected ? Math.max(height, 220) : height
-
-  if (isDimmed && !isSelected) {
-    return (
-      <g 
-        transform={`translate(${x}, ${y})`}
-        onClick={handleClick}
-        style={{ 
-          cursor: 'pointer',
-          opacity: 0.2,
-          filter: 'blur(2px)',
-          transition: 'opacity 0.3s ease, filter 0.3s ease',
-        }}
-      >
-        <rect
-          width={width}
-          height={Math.max(60, lifespan * pixelsPerYear)}
-          rx="6"
-          ry="6"
-          fill="var(--surface)"
-          stroke="var(--border)"
-          strokeWidth="1"
-        />
-      </g>
-    )
-  }
 
   return (
     <g 
@@ -102,8 +72,9 @@ function ScholarCard({
       onMouseLeave={() => setIsHovered(false)}
       style={{ 
         cursor: 'pointer',
-        opacity: isSelected ? 1 : isHovered ? 0.9 : 1,
-        transition: 'opacity 0.2s ease',
+        opacity: isDimmed ? 0.2 : isSelected ? 1 : isHovered ? 0.9 : 1,
+        filter: isDimmed ? 'blur(2px)' : 'none',
+        transition: 'opacity 0.3s ease, filter 0.3s ease',
       }}
     >
       {/* Card background with shadow when selected */}
@@ -274,7 +245,7 @@ function ScholarCard({
         </foreignObject>
       )}
 
-      {/* Expanded content - Region */}
+      {/* Expanded content - Generation */}
       {isSelected && (
         <foreignObject x="16" y={isSelected && (teachers.length > 0 || students.length > 0) ? 108 : 48} width={width - 24} height="20">
           <div className="text-[9px]" style={{ color: 'var(--text-secondary)' }}>

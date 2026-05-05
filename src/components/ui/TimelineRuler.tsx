@@ -111,10 +111,10 @@ export default function TimelineRuler({
 
   return (
     <div 
-      className="fixed right-0 top-16 bottom-0 w-[60px] flex flex-col items-center select-none"
+      className="w-[60px] flex flex-col items-center select-none border-l"
       style={{ 
         backgroundColor: 'var(--surface)', 
-        borderLeft: '1px solid var(--border)',
+        borderColor: 'var(--border)',
         zIndex: 10,
       }}
     >
