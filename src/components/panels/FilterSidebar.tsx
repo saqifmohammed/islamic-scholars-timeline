@@ -1,6 +1,6 @@
 'use client'
 
-import { Generation, Madhhab, Creed, GENERATION_LABELS } from '@/types'
+import { Generation, Madhhab, GENERATION_LABELS } from '@/types'
 
 interface FilterSidebarProps {
   filters: {
@@ -14,43 +14,50 @@ interface FilterSidebarProps {
 
 const generations: Generation[] = ['sahaba', 'tabiun', 'atba_al_tabiin', 'imams', 'scholars']
 const madhhabs: (Madhhab | null)[] = ['hanafi', 'maliki', 'shafii', 'hanbali', 'zahiri', 'hadith', null]
-const creeds: (Creed | null)[] = ['athari', 'ashari', 'maturidi', 'zahiri', null]
 
 export default function FilterSidebar({ filters, onFilterChange }: FilterSidebarProps) {
   return (
-    <div 
-      className="w-[280px] h-full border-r p-4 overflow-y-auto"
+    <aside 
+      className="w-[280px] h-full border-r p-4 overflow-y-auto shrink-0"
       style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
     >
-      <h2 className="text-sm font-medium mb-4" style={{ color: 'var(--text-primary)' }}>
+      <h2 
+        className="text-sm font-semibold mb-4"
+        style={{ color: 'var(--text-primary)', fontFamily: 'Limelight, serif' }}
+      >
         Filters
       </h2>
       
-      <div className="space-y-5">
+      <div className="space-y-6">
         {/* Generation Filter */}
         <div>
-          <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+          <label 
+            className="block text-xs font-medium mb-2"
+            style={{ color: 'var(--text-secondary)' }}
+          >
             Generation
           </label>
           <div className="space-y-1">
             <button
               onClick={() => onFilterChange({ ...filters, generation: null })}
-              className="w-full text-left px-2 py-1.5 rounded text-xs transition-colors"
+              className="w-full text-left px-3 py-2 rounded-lg text-sm transition-all"
               style={{
                 backgroundColor: !filters.generation ? 'var(--accent)' : 'transparent',
                 color: !filters.generation ? 'var(--surface)' : 'var(--text-secondary)',
+                fontWeight: !filters.generation ? 600 : 400,
               }}
             >
-              All
+              All Generations
             </button>
             {generations.map(gen => (
               <button
                 key={gen}
                 onClick={() => onFilterChange({ ...filters, generation: gen })}
-                className="w-full text-left px-2 py-1.5 rounded text-xs transition-colors"
+                className="w-full text-left px-3 py-2 rounded-lg text-sm transition-all"
                 style={{
                   backgroundColor: filters.generation === gen ? 'var(--surface-hover)' : 'transparent',
                   color: filters.generation === gen ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  borderLeft: filters.generation === gen ? '3px solid var(--accent)' : '3px solid transparent',
                 }}
               >
                 {GENERATION_LABELS[gen]}
@@ -61,13 +68,16 @@ export default function FilterSidebar({ filters, onFilterChange }: FilterSidebar
 
         {/* Madhhab Filter */}
         <div>
-          <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+          <label 
+            className="block text-xs font-medium mb-2"
+            style={{ color: 'var(--text-secondary)' }}
+          >
             Madhhab (Fiqh)
           </label>
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1.5">
             <button
               onClick={() => onFilterChange({ ...filters, madhhab: null })}
-              className="text-xs px-2 py-1 rounded"
+              className="text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all"
               style={{
                 backgroundColor: !filters.madhhab ? 'var(--accent)' : 'var(--surface-hover)',
                 color: !filters.madhhab ? 'var(--surface)' : 'var(--text-secondary)',
@@ -78,8 +88,8 @@ export default function FilterSidebar({ filters, onFilterChange }: FilterSidebar
             {madhhabs.filter(Boolean).map(m => (
               <button
                 key={m!}
-                onClick={() => onFilterChange({ ...filters, madhhab: m })}
-                className="text-xs px-2 py-1 rounded"
+                onClick={() => onFilterChange({ ...filters, madhhab: m})}
+                className="text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all"
                 style={{
                   backgroundColor: filters.madhhab === m ? 'var(--accent)' : 'var(--surface-hover)',
                   color: filters.madhhab === m ? 'var(--surface)' : 'var(--text-secondary)',
@@ -93,8 +103,11 @@ export default function FilterSidebar({ filters, onFilterChange }: FilterSidebar
 
         {/* Year Range */}
         <div>
-          <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-            Year Range
+          <label 
+            className="block text-xs font-medium mb-2"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            Year Range (AH)
           </label>
           <div className="flex gap-2">
             <input
@@ -105,7 +118,7 @@ export default function FilterSidebar({ filters, onFilterChange }: FilterSidebar
                 ...filters, 
                 minYear: e.target.value ? parseInt(e.target.value) : null 
               })}
-              className="w-full px-2 py-1.5 rounded text-xs"
+              className="w-full px-3 py-2 rounded-lg text-sm"
               style={{
                 backgroundColor: 'var(--background)',
                 border: '1px solid var(--border)',
@@ -120,7 +133,7 @@ export default function FilterSidebar({ filters, onFilterChange }: FilterSidebar
                 ...filters, 
                 maxYear: e.target.value ? parseInt(e.target.value) : null 
               })}
-              className="w-full px-2 py-1.5 rounded text-xs"
+              className="w-full px-3 py-2 rounded-lg text-sm"
               style={{
                 backgroundColor: 'var(--background)',
                 border: '1px solid var(--border)',
@@ -138,15 +151,15 @@ export default function FilterSidebar({ filters, onFilterChange }: FilterSidebar
             minYear: null,
             maxYear: null,
           })}
-          className="w-full py-1.5 rounded text-xs"
+          className="w-full py-2.5 rounded-lg text-sm font-medium transition-all"
           style={{ 
             backgroundColor: 'var(--surface-hover)',
             color: 'var(--text-secondary)',
           }}
         >
-          Clear Filters
+          Clear All Filters
         </button>
       </div>
-    </div>
+    </aside>
   )
 }
