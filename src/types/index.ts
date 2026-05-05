@@ -12,6 +12,13 @@ export interface Scholar {
   updated_at: string
 }
 
+export interface Book {
+  id: string
+  title: string
+  author_id: string
+  notes: string | null
+}
+
 export type Generation = 
   | 'sahaba'
   | 'tabiun'
@@ -26,14 +33,12 @@ export type Madhhab =
   | 'hanbali'
   | 'zahiri'
   | 'hadith'
-  | null
 
 export type Creed = 
   | 'athari'
   | 'ashari'
   | 'maturidi'
   | 'zahiri'
-  | null
 
 export interface Relationship {
   id: string
@@ -52,6 +57,7 @@ export interface GraphNode {
     creed: string | null
     birthYear: number | null
     deathYear: number | null
+    books?: { id: string; title: string }[]
   }
 }
 

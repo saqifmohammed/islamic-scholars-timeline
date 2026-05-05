@@ -76,7 +76,7 @@ export default function Home() {
       fetchGraphData()
     }, 200)
     return () => clearTimeout(timer)
-  }, [scrollY, filters, timelineRange])
+  }, [filters, timelineRange])
 
   const fetchGraphData = useCallback(async () => {
     setLoading(true)
@@ -132,6 +132,13 @@ export default function Home() {
     setScrollY(newScrollY)
   }, [])
 
+  const handleCanvasWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault()
+    const delta = e.deltaY > 0 ? 120 : -120
+    const maxScroll = (timelineRange.endYear - timelineRange.startYear) * pixelsPerYear - viewportHeight
+    setScrollY(prev => Math.max(0, Math.min(prev + delta, maxScroll)))
+  }, [timelineRange, pixelsPerYear, viewportHeight])
+
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       <Navbar 
@@ -145,7 +152,7 @@ export default function Home() {
       
       <div className="flex-1 flex overflow-hidden relative mr-[60px]" ref={containerRef}>
         {/* Main timeline canvas */}
-        <main className="flex-1 relative overflow-hidden" style={{ backgroundColor: 'var(--background)' }}>
+        <main className="flex-1 relative overflow-hidden" style={{ backgroundColor: 'var(--background)' }} onWheel={handleCanvasWheel}>
           {loading && nodes.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loading...</span>

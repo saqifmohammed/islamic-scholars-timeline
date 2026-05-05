@@ -14,7 +14,7 @@ interface Scholar {
 }
 
 const generations = ['sahaba', 'tabiun', 'atba_al_tabiin', 'imams', 'scholars']
-const madhhabs = ['hanafi', 'maliki', 'shafii', 'hanbali', 'zahiri', 'salafi', 'other']
+const madhhabs = ['hanafi', 'maliki', 'shafii', 'hanbali', 'zahiri', 'hadith']
 
 export default function AdminScholarsPage() {
   const [scholars, setScholars] = useState<Scholar[]>([])

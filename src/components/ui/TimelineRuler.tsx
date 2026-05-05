@@ -140,14 +140,14 @@ export default function TimelineRuler({
           const khEnd = kh.endYear || 2030
           const height = (khEnd - kh.startYear) * pixelsPerYear
           
-          if (y + height < -50 || y > viewportHeight + 50) return null
+          if (y + height < scrollY - 50 || y > scrollY + viewportHeight + 50) return null
 
           return (
             <div
               key={kh.id}
               className="absolute w-full cursor-pointer transition-opacity duration-200"
               style={{
-                top: y,
+                top: y - scrollY,
                 height: Math.max(20, height),
                 backgroundColor: kh.color,
                 opacity: hoveredKhilafah?.id === kh.id ? 0.5 : 0.25,
@@ -164,17 +164,17 @@ export default function TimelineRuler({
 
         {/* Year markers on top */}
         {markers.map(({ year, type, y }) => {
-          if (y < -50 || y > viewportHeight + 50) return null
+          if (y < scrollY - 50 || y > scrollY + viewportHeight + 50) return null
           
           const isMajor = type === 'major'
           const isMedium = type === 'medium'
           
           return (
             <div
-              key={year}
+              key={`${year}-${type}`}
               className="absolute w-full flex items-center pointer-events-none"
               style={{ 
-                top: y,
+                top: y - scrollY,
                 borderBottom: '1px solid',
                 borderColor: isMajor ? 'rgba(255,255,255,0.6)' : isMedium ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)',
               }}

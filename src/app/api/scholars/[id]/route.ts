@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-let mockScholars = [
-  { id: '1', name: 'Abu Hanifa', birth_year: 699, death_year: 767, generation: 'imams', madhhab: 'hanafi', region: 'Kufa', notes: null },
-  { id: '2', name: 'Malik ibn Anas', birth_year: 711, death_year: 795, generation: 'imams', madhhab: 'maliki', region: 'Medina', notes: null },
-  { id: '3', name: 'Al-Shafi\'i', birth_year: 767, death_year: 820, generation: 'imams', madhhab: 'shafii', region: 'Baghdad', notes: null },
-  { id: '4', name: 'Ahmad ibn Hanbal', birth_year: 780, death_year: 855, generation: 'imams', madhhab: 'hanbali', region: 'Baghdad', notes: null },
-]
+import { mockScholars } from '@/lib/mockData'
 
 export async function GET(
   request: NextRequest,

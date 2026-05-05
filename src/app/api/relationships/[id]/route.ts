@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { mockRelationships } from '@/lib/mockData'
 
-let mockRelationships = [
-  { id: 'r1', teacher_id: '2', student_id: '3', type: 'teacher' },
-  { id: 'r2', teacher_id: '3', student_id: '4', type: 'teacher' },
-]
 
 export async function DELETE(
   request: NextRequest,

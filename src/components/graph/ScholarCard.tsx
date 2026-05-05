@@ -15,6 +15,7 @@ interface ScholarCardProps {
   onClick?: () => void
   isSelected?: boolean
   isDimmed?: boolean
+  isConnected?: boolean
   pixelsPerYear: number
 }
 
@@ -30,6 +31,7 @@ function ScholarCard({
   onClick,
   isSelected = false,
   isDimmed = false,
+  isConnected = false,
   pixelsPerYear
 }: ScholarCardProps) {
   const [isHovered, setIsHovered] = useState(false)
@@ -58,25 +60,23 @@ function ScholarCard({
 
   const teachers = edges.filter(e => e.target === data.id).map(e => e.source)
   const students = edges.filter(e => e.source === data.id).map(e => e.target)
+  const books = data.data.books || []
 
   const nodeMap = new Map(nodes.map(n => [n.id, n.label]))
 
   const getLabel = (id: string) => nodeMap.get(id) || id
-  edges.forEach(e => {
-    nodeMap.set(e.source, e.source)
-    nodeMap.set(e.target, e.target)
-  })
 
-  const expandedHeight = isSelected ? Math.max(height, 220) : height
+  const booksHeight = isSelected && books.length > 0 ? 20 + Math.min(books.length, 5) * 16 : 0
+  const expandedHeight = isSelected ? Math.max(height, 220 + booksHeight) : height
 
-  if (isDimmed && !isSelected) {
+  if (isDimmed && !isSelected && !isConnected) {
     return (
       <g 
         transform={`translate(${x}, ${y})`}
         onClick={handleClick}
         style={{ 
           cursor: 'pointer',
-          opacity: 0.2,
+          opacity: 0.15,
           filter: 'blur(2px)',
           transition: 'opacity 0.3s ease, filter 0.3s ease',
         }}
@@ -90,6 +90,43 @@ function ScholarCard({
           stroke="var(--border)"
           strokeWidth="1"
         />
+      </g>
+    )
+  }
+
+  if (isConnected && !isSelected) {
+    const connectedHeight = Math.max(height, 60)
+    return (
+      <g
+        transform={`translate(${x}, ${y})`}
+        onClick={handleClick}
+        style={{ cursor: 'pointer', transition: 'opacity 0.3s ease' }}
+      >
+        <rect
+          width={width}
+          height={connectedHeight}
+          rx="6"
+          ry="6"
+          fill="var(--surface)"
+          stroke="var(--accent)"
+          strokeWidth="2"
+          style={{ filter: 'drop-shadow(0 0 8px var(--accent))' }}
+        />
+        {/* Accent lifeline */}
+        <rect x="4" y="8" width="3" height={connectedHeight - 16} rx="1.5" fill="var(--accent)" opacity="0.8" />
+        {/* Name */}
+        <foreignObject x="16" y="6" width={width - 24} height="36">
+          <div className="h-full overflow-hidden">
+            <div className="text-sm font-semibold truncate" style={{ color: 'var(--accent)' }}>
+              {data.label}
+            </div>
+            {years && (
+              <div className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                {years}
+              </div>
+            )}
+          </div>
+        </foreignObject>
       </g>
     )
   }
@@ -282,6 +319,35 @@ function ScholarCard({
           </div>
         </foreignObject>
       )}
+
+      {/* Expanded content - Books */}
+      {isSelected && books.length > 0 && (() => {
+        const booksY = (teachers.length > 0 || students.length > 0) ? 132 : 72
+        return (
+          <foreignObject x="16" y={booksY} width={width - 24} height={booksHeight}>
+            <div style={{ color: 'var(--text-secondary)' }}>
+              <div className="text-[9px] font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                Books:
+              </div>
+              {books.slice(0, 5).map(book => (
+                <div
+                  key={book.id}
+                  className="text-[9px] truncate py-0.5 px-1.5 rounded mb-0.5"
+                  style={{ backgroundColor: 'var(--surface-hover)', color: 'var(--text-primary)' }}
+                  title={book.title}
+                >
+                  📖 {book.title}
+                </div>
+              ))}
+              {books.length > 5 && (
+                <div className="text-[9px]" style={{ color: 'var(--text-secondary)' }}>
+                  +{books.length - 5} more
+                </div>
+              )}
+            </div>
+          </foreignObject>
+        )
+      })()}
 
       {/* Selected indicator glow */}
       {isSelected && (

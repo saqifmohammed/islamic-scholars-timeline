@@ -4,13 +4,9 @@ import { Scholar, GENERATION_LABELS } from '@/types'
 
 interface ScholarDetailProps {
   scholar: Scholar | null
-  onTeacherClick?: (teacherId: string) => void
-  onStudentClick?: (studentId: string) => void
 }
 
-export default function ScholarDetail({ 
-  scholar, 
-}: ScholarDetailProps) {
+export default function ScholarDetail({ scholar }: ScholarDetailProps) {
   if (!scholar) {
     return (
       <div 

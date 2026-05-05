@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useEffect } from 'react'
 import {
   ReactFlow,
   Background,
@@ -94,6 +94,14 @@ export default function GraphCanvas({
 
   const [flowNodes, setNodes, onNodesChange] = useNodesState(positionedNodes)
   const [flowEdges, setEdges, onEdgesChange] = useEdgesState(edgeList)
+
+  useEffect(() => {
+    setNodes(positionedNodes)
+  }, [positionedNodes, setNodes])
+
+  useEffect(() => {
+    setEdges(edgeList)
+  }, [edgeList, setEdges])
 
   const onNodeClick_ = useCallback(
     (_: React.MouseEvent, node: Node) => {

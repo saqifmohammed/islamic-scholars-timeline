@@ -22,6 +22,9 @@ export default function AdminLayout({
           <Link href="/admin/relationships" className="text-sm text-text-secondary hover:text-text-primary">
             Relationships
           </Link>
+          <Link href="/admin/books" className="text-sm text-text-secondary hover:text-text-primary">
+            Books
+          </Link>
         </div>
       </nav>
 
@@ -36,6 +39,11 @@ export default function AdminLayout({
             <li>
               <Link href="/admin/relationships" className="block px-3 py-2 rounded-md text-sm text-text-secondary hover:bg-surface-hover hover:text-text-primary">
                 Relationships
+              </Link>
+            </li>
+            <li>
+              <Link href="/admin/books" className="block px-3 py-2 rounded-md text-sm text-text-secondary hover:bg-surface-hover hover:text-text-primary">
+                Books
               </Link>
             </li>
           </ul>

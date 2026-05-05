@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useCallback, useEffect, useRef, useState } from 'react'
+import { useMemo, useCallback, useRef } from 'react'
 import { GraphNode, GraphEdge } from '@/types'
 import { 
   calculateLayout, 
@@ -43,19 +43,6 @@ export default function TimelineCanvas({
   selectedNodeId = null
 }: TimelineCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [containerWidth, setContainerWidth] = useState(800)
-
-  // Measure container width
-  useEffect(() => {
-    const updateWidth = () => {
-      if (containerRef.current) {
-        setContainerWidth(containerRef.current.clientWidth)
-      }
-    }
-    updateWidth()
-    window.addEventListener('resize', updateWidth)
-    return () => window.removeEventListener('resize', updateWidth)
-  }, [])
 
   const config: LayoutConfig = useMemo(() => ({
     ...DEFAULT_CONFIG,
@@ -87,6 +74,17 @@ export default function TimelineCanvas({
     [assignments]
   )
 
+  // Compute set of node IDs directly connected to the selected node
+  const connectedNodeIds = useMemo(() => {
+    if (!selectedNodeId) return new Set<string>()
+    const ids = new Set<string>()
+    edges.forEach(e => {
+      if (e.source === selectedNodeId) ids.add(e.target)
+      if (e.target === selectedNodeId) ids.add(e.source)
+    })
+    return ids
+  }, [selectedNodeId, edges])
+
   const handleCardClick = useCallback((nodeId: string) => {
     const assignment = assignmentMap.get(nodeId)
     if (assignment && containerRef.current) {
@@ -109,13 +107,12 @@ export default function TimelineCanvas({
   }, [assignments, layoutConfig])
 
   // Calculate offset to center content
-  const contentWidth = Math.max(containerWidth - 60, totalWidth)
   const xOffset = 0
 
   return (
     <div 
       ref={containerRef}
-      className="w-full h-full overflow-hidden relative"
+      className="w-full h-full overflow-x-auto overflow-y-hidden relative"
       style={{ 
         backgroundColor: 'var(--background)',
       }}
@@ -123,9 +120,8 @@ export default function TimelineCanvas({
     >
       {/* Main SVG canvas */}
       <svg
-        width="100%"
+        width={totalWidth}
         height={totalHeight}
-        viewBox={`0 0 ${Math.max(containerWidth - 60, contentWidth)} ${totalHeight}`}
       >
         {/* Scrollable content group */}
         <g transform={`translate(0, ${-scrollY})`}>
@@ -209,6 +205,7 @@ export default function TimelineCanvas({
                 isSelected={false}
                 pixelsPerYear={pixelsPerYear}
                 isDimmed={!!selectedNodeId}
+                isConnected={connectedNodeIds.has(assignment.id)}
               />
             )
           })}
@@ -236,6 +233,7 @@ export default function TimelineCanvas({
               isSelected={true}
               pixelsPerYear={pixelsPerYear}
               isDimmed={false}
+              isConnected={false}
             />
           )
         })()}
@@ -262,6 +260,7 @@ export default function TimelineCanvas({
               isSelected={false}
               pixelsPerYear={pixelsPerYear}
               isDimmed={false}
+              isConnected={false}
             />
           )
         })}
