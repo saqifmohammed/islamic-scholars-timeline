@@ -7,7 +7,7 @@ import TimelineCanvas from '@/components/graph/TimelineCanvas'
 import TimelineRuler from '@/components/ui/TimelineRuler'
 import { GraphNode, GraphEdge, Generation, Madhhab } from '@/types'
 
-const START_YEAR = 0    // AH (Prophet's Hijra)
+const START_YEAR = -60    // AH (Prophet Muhammad -53 AH birth)
 const END_YEAR = 1500 // AH
 const DEFAULT_PIXELS_PER_YEAR = 2
 
@@ -35,6 +35,8 @@ export default function Home() {
     minYear: null as number | null,
     maxYear: null as number | null,
   })
+  
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Detect mobile viewport
   useEffect(() => {
@@ -60,29 +62,29 @@ export default function Home() {
 
   // Fetch data
   useEffect(() => {
-    const timer = setTimeout(() => fetchGraphData(), 200)
-    return () => clearTimeout(timer)
-  }, [filters])
+    const load = async () => {
+      setLoading(true)
+      try {
+        const params = new URLSearchParams()
+        if (filters.generation) params.set('generation', filters.generation)
+        if (filters.madhhab) params.set('madhhab', filters.madhhab)
+        if (filters.minYear) params.set('minYear', filters.minYear.toString())
+        if (filters.maxYear) params.set('maxYear', filters.maxYear.toString())
+        if (searchQuery) params.set('search', searchQuery)
 
-  const fetchGraphData = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      if (filters.generation) params.set('generation', filters.generation)
-      if (filters.madhhab) params.set('madhhab', filters.madhhab)
-      if (filters.minYear) params.set('minYear', filters.minYear.toString())
-      if (filters.maxYear) params.set('maxYear', filters.maxYear.toString())
-
-      const res = await fetch(`/api/graph?${params.toString()}`)
-      const data = await res.json()
-      setNodes(data.nodes || [])
-      setEdges(data.edges || [])
-    } catch (error) {
-      console.error('Failed to fetch:', error)
-    } finally {
-      setLoading(false)
+        const res = await fetch(`/api/graph?${params.toString()}`)
+        const data = await res.json()
+        setNodes(data.nodes || [])
+        setEdges(data.edges || [])
+      } catch (error) {
+        console.error('Failed to fetch:', error)
+      } finally {
+        setLoading(false)
+      }
     }
-  }, [filters])
+    const timer = setTimeout(load, 200)
+    return () => clearTimeout(timer)
+  }, [filters, searchQuery])
 
   const selectedScholar = useMemo(() => 
     nodes.find(n => n.id === selectedScholarId) || null,
@@ -139,7 +141,7 @@ export default function Home() {
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       <Navbar 
-        onSearch={(query) => console.log('Search:', query)}
+        onSearch={(query) => setSearchQuery(query)}
         searchPlaceholder="Search scholars..."
         filters={filters}
         onFilterChange={handleFilterChange}
