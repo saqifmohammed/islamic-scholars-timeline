@@ -3,9 +3,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import Navbar from '@/components/ui/Navbar'
-import ScholarPopup from '@/components/ui/ScholarPopup'
 import TimelineRuler from '@/components/ui/TimelineRuler'
-import { GraphNode, GraphEdge, Scholar, Generation, Madhhab } from '@/types'
+import { GraphNode, GraphEdge, Generation, Madhhab } from '@/types'
 
 const BASE_PIXELS_PER_YEAR = 3
 
@@ -21,11 +20,9 @@ const TimelineCanvas = dynamic(() => import('@/components/graph/TimelineCanvas')
 export default function Home() {
   const [nodes, setNodes] = useState<GraphNode[]>([])
   const [edges, setEdges] = useState<GraphEdge[]>([])
-  const [selectedScholar, setSelectedScholar] = useState<Scholar | null>(null)
   const [loading, setLoading] = useState(true)
   const [scrollY, setScrollY] = useState(0)
   const [zoom, setZoom] = useState(1)
-  const [showPopup, setShowPopup] = useState(false)
   const [viewportHeight, setViewportHeight] = useState(600)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -103,28 +100,18 @@ export default function Home() {
     }
   }, [filters, timelineRange])
 
-  const fetchScholar = useCallback(async (id: string) => {
-    try {
-      const res = await fetch(`/api/scholars/${id}`)
-      if (res.ok) {
-        const data = await res.json()
-        setSelectedScholar(data)
-        setShowPopup(true)
-      }
-    } catch (error) {
-      console.error('Failed to fetch:', error)
-    }
-  }, [])
-
   const handleNodeClick = useCallback((nodeId: string, cardX: number, cardY: number) => {
+    if (!nodeId) {
+      setSelectedNodeId(null)
+      return
+    }
     setSelectedNodeId(nodeId)
-    fetchScholar(nodeId)
     
     // Calculate scroll position to center the selected card
     const targetScrollY = cardY - viewportHeight / 2
     const maxScroll = (timelineRange.endYear - timelineRange.startYear) * pixelsPerYear - viewportHeight
     setScrollY(Math.max(0, Math.min(targetScrollY, maxScroll)))
-  }, [fetchScholar, viewportHeight, pixelsPerYear, timelineRange])
+  }, [viewportHeight, pixelsPerYear, timelineRange])
 
   const handleFilterChange = useCallback((newFilters: typeof filters) => {
     setFilters(newFilters)
@@ -141,12 +128,6 @@ export default function Home() {
     setScrollY(Math.max(0, newScrollY))
   }, [scrollY, pixelsPerYear, viewportHeight, timelineRange])
 
-  const closePopup = useCallback(() => {
-    setShowPopup(false)
-    setSelectedScholar(null)
-    setSelectedNodeId(null)
-  }, [])
-
   const handleTimelineScroll = useCallback((newScrollY: number) => {
     setScrollY(newScrollY)
   }, [])
@@ -162,7 +143,7 @@ export default function Home() {
         onZoomChange={handleZoomChange}
       />
       
-      <div className="flex-1 flex overflow-hidden relative" ref={containerRef}>
+      <div className="flex-1 flex overflow-hidden relative mr-[60px]" ref={containerRef}>
         {/* Main timeline canvas */}
         <main className="flex-1 relative overflow-hidden" style={{ backgroundColor: 'var(--background)' }}>
           {loading && nodes.length === 0 ? (
@@ -194,14 +175,6 @@ export default function Home() {
           visibleStartYear={visibleStartYear}
           visibleEndYear={visibleEndYear}
         />
-        
-        {/* Scholar popup on left (overlays everything) */}
-        {showPopup && selectedScholar && (
-          <ScholarPopup 
-            scholar={selectedScholar} 
-            onClose={closePopup}
-          />
-        )}
       </div>
     </div>
   )

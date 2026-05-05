@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, memo, useCallback } from 'react'
-import { GraphNode } from '@/types'
+import { GraphNode, GraphEdge } from '@/types'
 
 interface ScholarCardProps {
   x: number
@@ -9,8 +9,12 @@ interface ScholarCardProps {
   width: number
   height: number
   data: GraphNode
+  nodes?: GraphNode[]
+  edges?: GraphEdge[]
+  onNavigate?: (nodeId: string) => void
   onClick?: () => void
   isSelected?: boolean
+  isDimmed?: boolean
   pixelsPerYear: number
 }
 
@@ -19,9 +23,13 @@ function ScholarCard({
   y, 
   width, 
   height, 
-  data, 
+  data,
+  nodes = [],
+  edges = [],
+  onNavigate,
   onClick,
   isSelected = false,
+  isDimmed = false,
   pixelsPerYear
 }: ScholarCardProps) {
   const [isHovered, setIsHovered] = useState(false)
@@ -33,14 +41,58 @@ function ScholarCard({
     ? `${birthYear}${deathYear ? ' - ' + deathYear : ''}`
     : ''
 
-  // Calculate positions for internal markers
-  const birthMarkerY = 0
-  const deathMarkerY = height
-
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     onClick?.()
   }, [onClick])
+
+  const handleTeacherClick = useCallback((e: React.MouseEvent, teacherId: string) => {
+    e.stopPropagation()
+    onNavigate?.(teacherId)
+  }, [onNavigate])
+
+  const handleStudentClick = useCallback((e: React.MouseEvent, studentId: string) => {
+    e.stopPropagation()
+    onNavigate?.(studentId)
+  }, [onNavigate])
+
+  const teachers = edges.filter(e => e.target === data.id).map(e => e.source)
+  const students = edges.filter(e => e.source === data.id).map(e => e.target)
+
+  const nodeMap = new Map(nodes.map(n => [n.id, n.label]))
+
+  const getLabel = (id: string) => nodeMap.get(id) || id
+  edges.forEach(e => {
+    nodeMap.set(e.source, e.source)
+    nodeMap.set(e.target, e.target)
+  })
+
+  const expandedHeight = isSelected ? Math.max(height, 220) : height
+
+  if (isDimmed && !isSelected) {
+    return (
+      <g 
+        transform={`translate(${x}, ${y})`}
+        onClick={handleClick}
+        style={{ 
+          cursor: 'pointer',
+          opacity: 0.2,
+          filter: 'blur(2px)',
+          transition: 'opacity 0.3s ease, filter 0.3s ease',
+        }}
+      >
+        <rect
+          width={width}
+          height={Math.max(60, lifespan * pixelsPerYear)}
+          rx="6"
+          ry="6"
+          fill="var(--surface)"
+          stroke="var(--border)"
+          strokeWidth="1"
+        />
+      </g>
+    )
+  }
 
   return (
     <g 
@@ -57,7 +109,7 @@ function ScholarCard({
       {/* Card background with shadow when selected */}
       <rect
         width={width}
-        height={height}
+        height={expandedHeight}
         rx="6"
         ry="6"
         fill="var(--surface)"
@@ -65,7 +117,7 @@ function ScholarCard({
         strokeWidth={isSelected ? 2 : 1}
         style={{
           transition: 'stroke 0.2s ease, stroke-width 0.2s ease',
-          filter: isSelected ? 'drop-shadow(0 0 8px var(--accent))' : 'none',
+          filter: isSelected ? 'drop-shadow(0 0 12px var(--accent))' : 'none',
         }}
       />
 
@@ -74,7 +126,7 @@ function ScholarCard({
         x="4"
         y="8"
         width="3"
-        height={height - 16}
+        height={expandedHeight - 16}
         rx="1.5"
         fill="var(--accent)"
         opacity="0.8"
@@ -88,7 +140,7 @@ function ScholarCard({
 
       {/* Death year marker (bottom triangle) */}
       <polygon
-        points={`8,${height - 8} 12,${height - 14} 4,${height - 14}`}
+        points={`8,${expandedHeight - 8} 12,${expandedHeight - 14} 4,${expandedHeight - 14}`}
         fill="var(--text-secondary)"
       />
 
@@ -97,7 +149,7 @@ function ScholarCard({
         <>
           {Array.from({ length: Math.floor(lifespan / 10) }, (_, i) => {
             const tickY = 20 + (i * 10 * pixelsPerYear)
-            if (tickY > 20 && tickY < height - 20) {
+            if (tickY > 20 && tickY < expandedHeight - 20) {
               return (
                 <line
                   key={i}
@@ -137,7 +189,7 @@ function ScholarCard({
       </foreignObject>
 
       {/* Footer - Madhhab and Creed badges */}
-      <foreignObject x="16" y={height - 32} width={width - 24} height="28">
+      <foreignObject x="16" y={expandedHeight - 32} width={width - 24} height="28">
         <div className="h-full flex items-center gap-1.5 flex-wrap">
           {data.data.madhhab && (
             <span 
@@ -164,11 +216,78 @@ function ScholarCard({
         </div>
       </foreignObject>
 
+      {/* Expanded content - Teachers */}
+      {isSelected && teachers.length > 0 && (
+        <foreignObject x="16" y={48} width={width - 24} height="24">
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="text-[9px]" style={{ color: 'var(--text-secondary)' }}>Teachers:</span>
+            {teachers.slice(0, 3).map(teacherId => (
+              <button
+                key={teacherId}
+                onClick={(e) => handleTeacherClick(e, teacherId)}
+                className="text-[9px] px-1.5 py-0.5 rounded hover:opacity-80 transition-opacity"
+                style={{ 
+                  backgroundColor: 'var(--surface-hover)', 
+                  color: 'var(--accent)',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                {getLabel(teacherId)}
+              </button>
+            ))}
+            {teachers.length > 3 && (
+              <span className="text-[9px]" style={{ color: 'var(--text-secondary)' }}>
+                +{teachers.length - 3}
+              </span>
+            )}
+          </div>
+        </foreignObject>
+      )}
+
+      {/* Expanded content - Students */}
+      {isSelected && students.length > 0 && (
+        <foreignObject x="16" y={76} width={width - 24} height="24">
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="text-[9px]" style={{ color: 'var(--text-secondary)' }}>Students:</span>
+            {students.slice(0, 3).map(studentId => (
+              <button
+                key={studentId}
+                onClick={(e) => handleStudentClick(e, studentId)}
+                className="text-[9px] px-1.5 py-0.5 rounded hover:opacity-80 transition-opacity"
+                style={{ 
+                  backgroundColor: 'var(--surface-hover)', 
+                  color: 'var(--accent)',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                {getLabel(studentId)}
+              </button>
+            ))}
+            {students.length > 3 && (
+              <span className="text-[9px]" style={{ color: 'var(--text-secondary)' }}>
+                +{students.length - 3}
+              </span>
+            )}
+          </div>
+        </foreignObject>
+      )}
+
+      {/* Expanded content - Region */}
+      {isSelected && (
+        <foreignObject x="16" y={isSelected && (teachers.length > 0 || students.length > 0) ? 108 : 48} width={width - 24} height="20">
+          <div className="text-[9px]" style={{ color: 'var(--text-secondary)' }}>
+            {data.data.generation && <span className="capitalize">{data.data.generation}</span>}
+          </div>
+        </foreignObject>
+      )}
+
       {/* Selected indicator glow */}
       {isSelected && (
         <rect
           width={width}
-          height={height}
+          height={expandedHeight}
           rx="6"
           ry="6"
           fill="none"

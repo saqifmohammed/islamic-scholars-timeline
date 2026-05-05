@@ -90,7 +90,7 @@ export default function TimelineCanvas({
   const handleCardClick = useCallback((nodeId: string) => {
     const assignment = assignmentMap.get(nodeId)
     if (assignment && containerRef.current) {
-      const cardX = assignment.lane * (layoutConfig.laneWidth + layoutConfig.laneGap) + 64 // 64 = khilafah width
+      const cardX = assignment.lane * (layoutConfig.laneWidth + layoutConfig.laneGap)
       const cardY = assignment.y
       onNodeClick?.(nodeId, cardX, cardY)
     }
@@ -119,16 +119,16 @@ export default function TimelineCanvas({
       style={{ 
         backgroundColor: 'var(--background)',
       }}
+      onClick={() => onNodeClick?.('', -1, -1)} // Click on background to deselect
     >
       {/* Main SVG canvas */}
       <svg
         width="100%"
         height={totalHeight}
         viewBox={`0 0 ${Math.max(containerWidth - 60, contentWidth)} ${totalHeight}`}
-        style={{
-          transition: 'transform 0.3s ease-out',
-        }}
       >
+        {/* Scrollable content group */}
+        <g transform={`translate(0, ${-scrollY})`}>
         {/* Grid background */}
         <defs>
           <pattern 
@@ -185,13 +185,41 @@ export default function TimelineCanvas({
           )
         })}
 
-        {/* Scholar cards */}
-        {visibleAssignments.map((assignment: LaneAssignment) => {
+        {/* Scholar cards - non-selected first, then selected last for z-index */}
+        {visibleAssignments
+          .filter(a => selectedNodeId && a.id !== selectedNodeId)
+          .map((assignment: LaneAssignment) => {
+            const node = nodes.find(n => n.id === assignment.id)
+            if (!node) return null
+            
+            const x = xOffset + assignment.lane * (layoutConfig.laneWidth + layoutConfig.laneGap)
+            
+            return (
+              <ScholarCard
+                key={assignment.id}
+                x={x}
+                y={assignment.y}
+                width={layoutConfig.laneWidth}
+                height={assignment.height}
+                data={node}
+                nodes={nodes}
+                edges={edges}
+                onNavigate={handleCardClick}
+                onClick={() => handleCardClick(node.id)}
+                isSelected={false}
+                pixelsPerYear={pixelsPerYear}
+                isDimmed={!!selectedNodeId}
+              />
+            )
+          })}
+
+        {/* Selected card (rendered last for z-index) */}
+        {selectedNodeId && visibleAssignments.find(a => a.id === selectedNodeId) && (() => {
+          const assignment = visibleAssignments.find(a => a.id === selectedNodeId)!
           const node = nodes.find(n => n.id === assignment.id)
           if (!node) return null
           
           const x = xOffset + assignment.lane * (layoutConfig.laneWidth + layoutConfig.laneGap)
-          const isSelected = selectedNodeId === assignment.id
           
           return (
             <ScholarCard
@@ -201,12 +229,43 @@ export default function TimelineCanvas({
               width={layoutConfig.laneWidth}
               height={assignment.height}
               data={node}
+              nodes={nodes}
+              edges={edges}
+              onNavigate={handleCardClick}
               onClick={() => handleCardClick(node.id)}
-              isSelected={isSelected}
+              isSelected={true}
               pixelsPerYear={pixelsPerYear}
+              isDimmed={false}
+            />
+          )
+        })()}
+
+        {/* Non-selected cards when nothing is selected */}
+        {!selectedNodeId && visibleAssignments.map((assignment: LaneAssignment) => {
+          const node = nodes.find(n => n.id === assignment.id)
+          if (!node) return null
+          
+          const x = xOffset + assignment.lane * (layoutConfig.laneWidth + layoutConfig.laneGap)
+          
+          return (
+            <ScholarCard
+              key={assignment.id}
+              x={x}
+              y={assignment.y}
+              width={layoutConfig.laneWidth}
+              height={assignment.height}
+              data={node}
+              nodes={nodes}
+              edges={edges}
+              onNavigate={handleCardClick}
+              onClick={() => handleCardClick(node.id)}
+              isSelected={false}
+              pixelsPerYear={pixelsPerYear}
+              isDimmed={false}
             />
           )
         })}
+        </g>
       </svg>
     </div>
   )
